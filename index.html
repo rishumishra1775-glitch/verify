@@ -6,21 +6,17 @@
     <title>Device Verification</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 40px 20px; background-color: #f4f7f6; color: #333; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
-        h2 { color: #0088cc; margin-bottom: 10px; }
-        p { font-size: 14px; color: #666; margin-bottom: 25px; }
-        button { background-color: #0088cc; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; }
-        button:hover { background-color: #006699; }
-        #status { margin-top: 20px; font-size: 14px; font-weight: bold; }
+        body { font-family: sans-serif; text-align: center; padding: 30px; background: #f0f2f5; }
+        .box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { background: #0088cc; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; width: 100%; margin-top: 15px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>🛡️ Device Verification</h2>
-        <p>Anti-cheat protection: Click below to verify your device hardware profile.</p>
-        <button id="verifyBtn">Verify This Device</button>
-        <div id="status"></div>
+    <div class="box">
+        <h3>🔒 Device Verification</h3>
+        <p>Click below to verify your hardware profile.</p>
+        <button id="vbtn" onclick="processVerify()">Verify Device Now</button>
+        <p id="msg" style="margin-top:15px; font-weight:bold;"></p>
     </div>
 
     <script>
@@ -30,47 +26,48 @@
             tg.expand();
         }
 
-        function getCanvasFingerprint() {
+        function processVerify() {
+            const btn = document.getElementById("vbtn");
+            const msg = document.getElementById("msg");
+            btn.disabled = true;
+            msg.style.color = "blue";
+            msg.innerText = "Processing...";
+
+            let canvasFp = "";
             try {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 ctx.textBaseline = "top";
                 ctx.font = "14px 'Arial'";
-                ctx.fillStyle = "#f60";
-                ctx.fillRect(125,1,62,20);
-                ctx.fillStyle = "#069";
-                ctx.fillText("BhaicharaBotVerification#123", 2, 15);
-                return canvas.toDataURL();
+                ctx.fillText("DeviceFingerprint#2026", 2, 2);
+                canvasFp = canvas.toDataURL();
             } catch(e) {
-                return "no-canvas";
+                canvasFp = "no-canvas";
+            }
+
+            const rawToken = window.screen.width + "x" + window.screen.height + "_" + navigator.userAgent + "_" + canvasFp;
+            
+            // Simple hashing algorithm to create consistent short device token
+            let hash = 0;
+            for (let i = 0; i < rawToken.length; i++) {
+                const char = rawToken.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash |= 0;
+            }
+            const deviceToken = "DEV_" + Math.abs(hash);
+
+            const payload = JSON.stringify({ action: "device_verified", token: deviceToken });
+
+            if (tg && tg.sendData) {
+                msg.style.color = "green";
+                msg.innerText = "✅ Device Verified!";
+                tg.sendData(payload);
+                setTimeout(() => { tg.close(); }, 500);
+            } else {
+                msg.style.color = "red";
+                msg.innerText = "❌ Please open this link strictly inside Telegram Mobile App!";
             }
         }
-
-        document.getElementById('verifyBtn').addEventListener('click', function() {
-            const statusDiv = document.getElementById('status');
-            statusDiv.style.color = "#0088cc";
-            statusDiv.innerText = "Verifying device identity...";
-
-            const canvasFp = getCanvasFingerprint();
-            const fpData = {
-                screen: `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`,
-                ua: navigator.userAgent,
-                platform: navigator.platform,
-                fp: canvasFp
-            };
-
-            const deviceToken = btoa(encodeURIComponent(JSON.stringify(fpData))).substring(0, 40);
-
-            if (tg) {
-                tg.sendData(JSON.stringify({ action: "device_verified", token: deviceToken }));
-                statusDiv.style.color = "green";
-                statusDiv.innerText = "✅ Device verified successfully!";
-                setTimeout(() => { tg.close(); }, 1000);
-            } else {
-                statusDiv.style.color = "red";
-                statusDiv.innerText = "❌ Open this link inside Telegram app only!";
-            }
-        });
     </script>
 </body>
 </html>
