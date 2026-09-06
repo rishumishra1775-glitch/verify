@@ -5,18 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Device Verification</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 30px; background: #f0f2f5; }
-        .box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        button { background: #0088cc; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; width: 100%; margin-top: 15px; cursor: pointer; }
+        body { font-family: sans-serif; text-align: center; padding: 25px; background: #f0f2f5; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .cf-turnstile { margin: 20px auto; display: flex; justify-content: center; }
+        #status { font-weight: bold; margin-top: 15px; }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h3>🔒 Device Verification</h3>
-        <p>Click below to verify your hardware profile.</p>
-        <button id="vbtn" onclick="processVerify()">Verify Device Now</button>
-        <p id="msg" style="margin-top:15px; font-weight:bold;"></p>
+    <div class="card">
+        <h3>🛡️ Human & Device Check</h3>
+        <p>Complete the security check to continue.</p>
+        
+        <!-- Cloudflare Turnstile Widget -->
+        <div class="cf-turnstile" data-sitekey="1x00000000000000000000AA" data-callback="onTurnstileSuccess"></div>
+        
+        <p id="status"></p>
     </div>
 
     <script>
@@ -26,46 +31,42 @@
             tg.expand();
         }
 
-        function processVerify() {
-            const btn = document.getElementById("vbtn");
-            const msg = document.getElementById("msg");
-            btn.disabled = true;
-            msg.style.color = "blue";
-            msg.innerText = "Processing...";
+        function onTurnstileSuccess(token) {
+            const status = document.getElementById("status");
+            status.style.color = "blue";
+            status.innerText = "Verifying Device Hardware...";
 
+            // Generating lightweight canvas fingerprint combined with turnstile
             let canvasFp = "";
             try {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                ctx.textBaseline = "top";
-                ctx.font = "14px 'Arial'";
-                ctx.fillText("DeviceFingerprint#2026", 2, 2);
+                ctx.fillText("CF_Device_Check_2026", 2, 2);
                 canvasFp = canvas.toDataURL();
-            } catch(e) {
-                canvasFp = "no-canvas";
-            }
+            } catch(e) { canvasFp = "no-canvas"; }
 
-            const rawToken = window.screen.width + "x" + window.screen.height + "_" + navigator.userAgent + "_" + canvasFp;
-            
-            // Simple hashing algorithm to create consistent short device token
             let hash = 0;
-            for (let i = 0; i < rawToken.length; i++) {
-                const char = rawToken.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
+            const rawStr = navigator.userAgent + window.screen.width + "x" + window.screen.height + canvasFp;
+            for (let i = 0; i < rawStr.length; i++) {
+                hash = ((hash << 5) - hash) + rawStr.charCodeAt(i);
                 hash |= 0;
             }
-            const deviceToken = "DEV_" + Math.abs(hash);
 
-            const payload = JSON.stringify({ action: "device_verified", token: deviceToken });
+            const deviceToken = "CF_DEV_" + Math.abs(hash);
+            const payload = JSON.stringify({
+                action: "device_verified",
+                token: deviceToken,
+                cf_token: token
+            });
 
             if (tg && tg.sendData) {
-                msg.style.color = "green";
-                msg.innerText = "✅ Device Verified!";
+                status.style.color = "green";
+                status.innerText = "✅ Verified! Closing...";
                 tg.sendData(payload);
-                setTimeout(() => { tg.close(); }, 500);
+                setTimeout(() => { tg.close(); }, 800);
             } else {
-                msg.style.color = "red";
-                msg.innerText = "❌ Please open this link strictly inside Telegram Mobile App!";
+                status.style.color = "red";
+                status.innerText = "❌ Open inside Telegram Mobile App!";
             }
         }
     </script>
