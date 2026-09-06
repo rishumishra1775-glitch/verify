@@ -24,8 +24,11 @@
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+        const tg = window.Telegram ? window.Telegram.WebApp : null;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
 
         function getCanvasFingerprint() {
             try {
@@ -37,23 +40,19 @@
                 ctx.fillRect(125,1,62,20);
                 ctx.fillStyle = "#069";
                 ctx.fillText("BhaicharaBotVerification#123", 2, 15);
-                ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
-                ctx.fillText("BhaicharaBotVerification#123", 4, 17);
                 return canvas.toDataURL();
             } catch(e) {
                 return "no-canvas";
             }
         }
 
-        document.getElementById('verifyBtn').addEventListener('click', async () => {
+        document.getElementById('verifyBtn').addEventListener('click', function() {
             const statusDiv = document.getElementById('status');
             statusDiv.style.color = "#0088cc";
             statusDiv.innerText = "Verifying device identity...";
 
             const canvasFp = getCanvasFingerprint();
             const fpData = {
-                user_id: tg.initDataUnsafe?.user?.id || 0,
-                initData: tg.initData,
                 screen: `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`,
                 ua: navigator.userAgent,
                 platform: navigator.platform,
@@ -62,11 +61,15 @@
 
             const deviceToken = btoa(encodeURIComponent(JSON.stringify(fpData))).substring(0, 40);
 
-            tg.sendData(JSON.stringify({ action: "device_verified", token: deviceToken }));
-            
-            statusDiv.style.color = "green";
-            statusDiv.innerText = "✅ Device verified successfully!";
-            setTimeout(() => { tg.close(); }, 1500);
+            if (tg) {
+                tg.sendData(JSON.stringify({ action: "device_verified", token: deviceToken }));
+                statusDiv.style.color = "green";
+                statusDiv.innerText = "✅ Device verified successfully!";
+                setTimeout(() => { tg.close(); }, 1000);
+            } else {
+                statusDiv.style.color = "red";
+                statusDiv.innerText = "❌ Open this link inside Telegram app only!";
+            }
         });
     </script>
 </body>
